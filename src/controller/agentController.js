@@ -162,7 +162,7 @@ const getLoggedInUserData = async (req, res) => {
 // Controller to get all agents
 const getAllAgents = async (req, res) => {
   try {
-    // Retrieve all agents
+    // Retrieve all agents name
     const agents = await Agent.find({}, { password: 0 }); // Exclude passwords for security
 
     return res.status(200).json({
@@ -217,9 +217,6 @@ const sendDataToAgent = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Failed to send data to agent", error });
   }
-
-
-  
 };
 
 module.exports = {
