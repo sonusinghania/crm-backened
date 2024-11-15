@@ -49,7 +49,170 @@
 //     }
 //   };
 // module.exports = { createAgent, loginAgent };
+const mongoose = require("mongoose");
 const Agent = require("../models/agentModel");
+const Lead = require("../models/Lead");
+const fs = require("fs");
+const path = require("path");
+// Helper function to read JSON file and parse it
+const readJSONFile = () => {
+  try {
+    const filePath = path.join(__dirname, "..", "userData.json"); // Correct path to userData.json
+    console.log("File path: ", filePath);
+    const data = fs.readFileSync(filePath, "utf8");
+    return JSON.parse(data);
+  } catch (error) {
+    console.error("Error reading or parsing JSON file:", error);
+    throw new Error("Failed to read or parse the JSON file.");
+  }
+};
+
+// Schema for tracking sent leads
+const SentLeadSchema = new mongoose.Schema({
+  leadId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    unique: true,
+  },
+});
+
+const SentLead = mongoose.model("SentLead", SentLeadSchema);
+
+const sendDataInChunks = async (req, res) => {
+  try {
+    // Read the data from the JSON file
+    const leadsData = readJSONFile();
+
+    // Ensure the data is an array
+    if (!Array.isArray(leadsData)) {
+      return res
+        .status(500)
+        .json({ message: "Invalid data format in userData.json" });
+    }
+
+    // Get the agent's ID from the URL parameter
+    const agentId = req.params.id;
+
+    // Find the agent in the database
+    const agent = await Agent.findById(agentId);
+    if (!agent) {
+      return res.status(404).json({ message: "Agent not found" });
+    }
+
+    // Find all already sent leads
+    const sentLeads = await SentLead.find({}, { leadId: 1 });
+
+    // Extract the IDs of already sent leads
+    const sentLeadIds = sentLeads.map((item) => item.leadId.toString());
+
+    // Filter out already sent leads from the data
+    const unsentLeads = leadsData.filter(
+      (lead) => !sentLeadIds.includes(lead._id.$oid)
+    );
+
+    // Determine the next chunk of unsent leads to send (20 at a time)
+    const leadsToSend = unsentLeads.slice(0, 20);
+
+    // If there are no more unsent leads
+    if (leadsToSend.length === 0) {
+      return res.status(200).json({ message: "No more leads to send" });
+    }
+
+    // Filter the data to include only the required fields
+    const filteredLeads = leadsToSend.map((lead) => ({
+      name: lead.name,
+      mobileNumber: lead.mobileNumber,
+      productOrService: lead.productOrService,
+      companyName: lead.companyName,
+    }));
+
+    // Save the filtered leads to the database
+    await Lead.insertMany(filteredLeads);
+
+    // Track these leads as sent
+    const sentLeadRecords = leadsToSend.map((lead) => ({
+      leadId: new mongoose.Types.ObjectId(lead._id.$oid),
+    }));
+    await SentLead.insertMany(sentLeadRecords);
+
+    // Update the agent's messagesSent array
+    agent.messagesSent.push(...filteredLeads);
+    await agent.save();
+
+    // Send the response back to the client
+    res.status(200).json({
+      message: `Sent ${filteredLeads.length} leads to agent`,
+      data: filteredLeads,
+    });
+  } catch (error) {
+    console.error("Error sending leads:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to send leads", error: error.message });
+  }
+};
+
+// +++++++++++++++ Working Data+++++++++++++++++++++++++++++++++++
+// Function to send data in chunks
+// const sendDataInChunks = async (req, res) => {
+//   try {
+//     // Read the data from the JSON file
+//     const leadsData = readJSONFile();
+
+//     // Ensure the data is an array
+//     if (!Array.isArray(leadsData)) {
+//       return res
+//         .status(500)
+//         .json({ message: "Invalid data format in userData.json" });
+//     }
+
+//     // Get the agent's ID from the URL parameter
+//     const agentId = req.params.id;
+
+//     // Find the agent in the database
+//     const agent = await Agent.findById(agentId);
+//     if (!agent) {
+//       return res.status(404).json({ message: "Agent not found" });
+//     }
+
+//     // Find out how many leads are already sent
+//     let sentLeadsCount = agent.messagesSent ? agent.messagesSent.length : 0;
+
+//     // Determine the next chunk of leads to send (20 at a time)
+//     const leadsToSend = leadsData.slice(sentLeadsCount, sentLeadsCount + 20);
+
+//     // If there are no more leads to send
+//     if (leadsToSend.length === 0) {
+//       return res.status(200).json({ message: "No more leads to send" });
+//     }
+
+//     // Filter the data to include only the required fields
+//     const filteredLeads = leadsToSend.map((lead) => ({
+//       name: lead.name,
+//       mobileNumber: lead.mobileNumber,
+//       productOrService: lead.productOrService,
+//       companyName: lead.companyName,
+//     }));
+
+//     // Save the filtered leads to the database
+//     await Lead.insertMany(filteredLeads);
+
+//     // Update the agent's messagesSent array
+//     agent.messagesSent.push(...filteredLeads);
+//     await agent.save();
+
+//     // Send the response back to the client
+//     res.status(200).json({
+//       message: `Sent ${filteredLeads.length} leads to agent`,
+//       data: filteredLeads,
+//     });
+//   } catch (error) {
+//     console.error("Error sending leads:", error);
+//     res
+//       .status(500)
+//       .json({ message: "Failed to send leads", error: error.message });
+//   }
+// };
 
 // Controller to create a new agent
 const createAgent = async (req, res) => {
@@ -199,25 +362,25 @@ const toggleAgentStatus = async (req, res) => {
 };
 
 // Controller to send data to a specific agent
-const sendDataToAgent = async (req, res) => {
-  try {
-    const agent = await Agent.findById(req.params.id);
-    if (!agent) {
-      return res.status(404).json({ message: "Agent not found" });
-    }
+// const sendDataToAgent = async (req, res) => {
+//   try {
+//     const agent = await Agent.findById(req.params.id);
+//     if (!agent) {
+//       return res.status(404).json({ message: "Agent not found" });
+//     }
 
-    // Extract data from request body
-    const { name, email, phoneNumber, description } = req.body;
+//     // Extract data from request body
+//     const { name, email, phoneNumber, description } = req.body;
 
-    // Add message to agent's messagesSent array
-    agent.messagesSent.push({ name, email, phoneNumber, description });
-    await agent.save();
+//     // Add message to agent's messagesSent array
+//     agent.messagesSent.push({ name, email, phoneNumber, description });
+//     await agent.save();
 
-    res.status(200).json({ message: "Data sent to agent successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to send data to agent", error });
-  }
-};
+//     res.status(200).json({ message: "Data sent to agent successfully" });
+//   } catch (error) {
+//     res.status(500).json({ message: "Failed to send data to agent", error });
+//   }
+// };
 
 module.exports = {
   createAgent,
@@ -225,5 +388,6 @@ module.exports = {
   getLoggedInUserData,
   getAllAgents,
   toggleAgentStatus,
-  sendDataToAgent,
+  sendDataInChunks,
+  // sendDataToAgent,
 };

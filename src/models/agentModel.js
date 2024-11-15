@@ -82,18 +82,19 @@ const agentSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  messagesSent: [
-    {
-      name: String,
-      email: String,
-      phoneNumber: String,
-      description: String,
-      sentAt: {
-        type: Date,
-        default: Date.now,
-      },
-    },
-  ],
+  messagesSent: { type: Array, default: [] },
+  // messagesSent: [
+  //   {
+  //     name: String,
+  //     email: String,
+  //     phoneNumber: String,
+  //     description: String,
+  //     sentAt: {
+  //       type: Date,
+  //       default: Date.now,
+  //     },
+  //   },
+  // ],
 });
 
 const Agent = mongoose.model("Agent", agentSchema);
