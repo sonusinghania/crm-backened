@@ -9,6 +9,7 @@ const {
   getAllAgents,
   toggleAgentStatus,
   sendDataInChunks,
+  getSentDataForAgent,
   // sendDataToAgent,
 } = require("../controller/agentController");
 const router = express.Router();
@@ -35,5 +36,8 @@ router.post("/getLoggedInUserData", getLoggedInUserData);
 
 // Route to send bulk data to an agent in chunks
 router.post("/send-bulk-data/:id", sendDataInChunks);
+
+// Route for fetching sent data for an individual agent
+router.get("/sent-data/:id", getSentDataForAgent);
 
 module.exports = router;

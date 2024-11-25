@@ -1,4 +1,4 @@
-// // src/app.js
+// src/app.js
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./db/conn");
@@ -26,7 +26,8 @@ app.use("/api/agents", agentRouter);
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
-// src/app.js
+
+// src / app.js;
 // const express = require("express");
 // const cors = require("cors");
 // const connectDB = require("./db/conn");

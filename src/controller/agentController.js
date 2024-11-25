@@ -152,6 +152,110 @@ const sendDataInChunks = async (req, res) => {
   }
 };
 
+// In this added data IN chunk
+
+// const sendDataInChunks = async (req, res) => {
+//   try {
+//     // Read the data from the JSON file
+//     const leadsData = readJSONFile();
+
+//     if (!Array.isArray(leadsData)) {
+//       return res
+//         .status(500)
+//         .json({ message: "Invalid data format in userData.json" });
+//     }
+
+//     // Get the agent's ID from the URL parameter
+//     const agentId = req.params.id;
+
+//     // Find the agent in the database
+//     const agent = await Agent.findById(agentId);
+//     if (!agent) {
+//       return res.status(404).json({ message: "Agent not found" });
+//     }
+
+//     // Find all leads already sent by this agent
+//     const sentLeads = await SentLead.find(
+//       { agentId: agent._id },
+//       { leadId: 1 }
+//     );
+
+//     // Extract the IDs of already sent leads
+//     const sentLeadIds = sentLeads.map((item) => item.leadId.toString());
+
+//     // Filter out already sent leads from the data
+//     const unsentLeads = leadsData.filter(
+//       (lead) => !sentLeadIds.includes(lead._id.$oid)
+//     );
+
+//     // Determine the next chunk of unsent leads to send (20 at a time)
+//     const leadsToSend = unsentLeads.slice(0, 20);
+
+//     if (leadsToSend.length === 0) {
+//       return res.status(200).json({ message: "No more leads to send" });
+//     }
+
+//     // Filter the data to include only the required fields and add timestamp
+//     const filteredLeads = leadsToSend.map((lead) => ({
+//       name: lead.name,
+//       mobileNumber: lead.mobileNumber,
+//       productOrService: lead.productOrService,
+//       companyName: lead.companyName,
+//       sentAt: new Date(), // Add a timestamp for when the lead is sent
+//     }));
+
+//     // Save the filtered leads to the database
+//     await Lead.insertMany(filteredLeads);
+
+//     // Track these leads as sent, associated with the agent
+//     const sentLeadRecords = leadsToSend.map((lead) => ({
+//       leadId: new mongoose.Types.ObjectId(lead._id.$oid),
+//       agentId: agent._id,
+//     }));
+//     await SentLead.insertMany(sentLeadRecords);
+
+//     // Update the agent's messagesSent array
+//     agent.messagesSent.push(...filteredLeads);
+//     await agent.save();
+
+//     // Send the response back to the client
+//     res.status(200).json({
+//       message: `Sent ${filteredLeads.length} leads to agent`,
+//       data: filteredLeads,
+//     });
+//   } catch (error) {
+//     console.error("Error sending leads:", error);
+//     res
+//       .status(500)
+//       .json({ message: "Failed to send leads", error: error.message });
+//   }
+// };
+
+// Controller to get sent data for an agent
+const getSentDataForAgent = async (req, res) => {
+  try {
+    // Get the agent's ID from the URL parameter
+    const agentId = req.params.id;
+
+    // Find the agent in the database
+    const agent = await Agent.findById(agentId);
+    if (!agent) {
+      return res.status(404).json({ message: "Agent not found" });
+    }
+
+    // Respond with the sent data
+    res.status(200).json({
+      message: "Retrieved sent data successfully",
+      data: agent.messagesSent, // Assuming messagesSent contains the sent leads
+    });
+  } catch (error) {
+    console.error("Error fetching sent data:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to fetch sent data", error: error.message });
+  }
+};
+
 // +++++++++++++++ Working Data+++++++++++++++++++++++++++++++++++
 // Function to send data in chunks
 // const sendDataInChunks = async (req, res) => {
@@ -296,8 +400,72 @@ const loginAgent = async (req, res) => {
 module.exports = { loginAgent /* other functions */ };
 
 // Controller to fetch logged-in user data without authentication
+// const getLoggedInUserData = async (req, res) => {
+//   const { username } = req.body; // Assuming you send the username in the body
+
+//   if (!username) {
+//     return res.status(400).json({ message: "Username is required" });
+//   }
+
+//   try {
+//     // Find the agent by username
+//     const agent = await Agent.findOne({ username });
+
+//     if (!agent) {
+//       return res.status(404).json({ message: "Agent not found" });
+//     }
+
+//     // Send back user details (name and mobile number)
+//     const { name, mobileNumber } = agent;
+//     return res.status(200).json({
+//       message: "User data fetched successfully",
+//       data: { name, mobileNumber }, // Avoid sending the password for security
+//     });
+//   } catch (err) {
+//     return res.status(500).json({ message: "Server error", error: err });
+//   }
+// };
+// Controller to fetch logged-in user data with messagesSent array
+// const getLoggedInUserData = async (req, res) => {
+//   const { username } = req.body;
+
+//   if (!username) {
+//     return res.status(400).json({ message: "Username is required" });
+//   }
+
+//   try {
+//     // Find the agent by username
+//     const agent = await Agent.findOne({ username });
+
+//     if (!agent) {
+//       return res.status(404).json({ message: "Agent not found" });
+//     }
+
+//     // Log the agent object to check if messagesSent is there
+//     // This is for debugging
+//     // console.log(agent);
+
+//     // Check if messagesSent exists and is an array
+//     const { name, mobileNumber, messagesSent } = agent;
+
+//     if (!Array.isArray(messagesSent) || messagesSent.length === 0) {
+//       // If messagesSent is empty or not an array, handle accordingly
+//       console.log("No messages found for this agent.");
+//     }
+
+//     // Return the response with name, mobileNumber, and messagesSent
+//     return res.status(200).json({
+//       message: "User data fetched successfully",
+//       data: { name, mobileNumber, messagesSent },
+//     });
+//   } catch (err) {
+//     return res.status(500).json({ message: "Server error", error: err });
+//   }
+// };
+
+// ========= Sorted here +++++++++++++++
 const getLoggedInUserData = async (req, res) => {
-  const { username } = req.body; // Assuming you send the username in the body
+  const { username } = req.body;
 
   if (!username) {
     return res.status(400).json({ message: "Username is required" });
@@ -311,11 +479,27 @@ const getLoggedInUserData = async (req, res) => {
       return res.status(404).json({ message: "Agent not found" });
     }
 
-    // Send back user details (name and mobile number)
-    const { name, mobileNumber } = agent;
+    // Extract necessary fields
+    const { name, mobileNumber, messagesSent } = agent;
+
+    if (!Array.isArray(messagesSent) || messagesSent.length === 0) {
+      console.log("No messages found for this agent.");
+    }
+
+    // Sort messagesSent array by sentAt in descending order to get latest data first
+    const sortedMessages = messagesSent.sort((a, b) => {
+      // Ensure sentAt exists and is a valid date
+      const dateA = new Date(a.sentAt);
+      const dateB = new Date(b.sentAt);
+
+      // Sort in descending order (latest first)
+      return dateB - dateA;
+    });
+
+    // Return the response with sorted data
     return res.status(200).json({
       message: "User data fetched successfully",
-      data: { name, mobileNumber }, // Avoid sending the password for security
+      data: { name, mobileNumber, messagesSent: sortedMessages },
     });
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err });
@@ -389,5 +573,6 @@ module.exports = {
   getAllAgents,
   toggleAgentStatus,
   sendDataInChunks,
+  getSentDataForAgent,
   // sendDataToAgent,
 };
