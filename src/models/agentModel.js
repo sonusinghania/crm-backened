@@ -88,6 +88,7 @@ const agentSchema = new mongoose.Schema({
       name: String,
       mobileNumber: String,
       companyName: String,
+      cityname: String,
       productOrService: String,
       sentAt: {
         type: Date,

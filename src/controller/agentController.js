@@ -124,6 +124,7 @@ const sendDataInChunks = async (req, res) => {
       mobileNumber: lead.mobileNumber,
       productOrService: lead.productOrService,
       companyName: lead.companyName,
+      cityname: lead.cityname,
     }));
 
     // Save the filtered leads to the database
